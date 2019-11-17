@@ -1,0 +1,129 @@
+db 9, "segment code", 10, 10
+iterate libcall, putchar,    \
+                             \
+                 _frameset0, \
+                 _frameset,  \
+                             \
+                 _stoiu,     \
+                 _stoi,      \
+                 _itol,      \
+                 _snot,      \
+                 _inot,      \
+                 _lnot,      \
+                 _llnot,     \
+                 _sand,      \
+                 _iand,      \
+                 _land,      \
+                 _lland,     \
+                 _sor,       \
+                 _ior,       \
+                 _lor,       \
+                 _llor,      \
+                 _sxor,      \
+                 _ixor,      \
+                 _lxor,      \
+                 _llxor,     \
+                 _bshl,      \
+                 _sshl,      \
+                 _sshl_b,    \
+                 _ishl,      \
+                 _ishl_b,    \
+                 _lshl,      \
+                 _llshl,     \
+                 _bshrs,     \
+                 _sshrs,     \
+                 _sshrs_b,   \
+                 _ishrs,     \
+                 _ishrs_b,   \
+                 _lshrs,     \
+                 _llshrs,    \
+                 _bshru,     \
+                 _sshru,     \
+                 _sshru_b,   \
+                 _ishru,     \
+                 _ishru_b,   \
+                 _lshru,     \
+                 _llshru,    \
+                 _lcmpu,     \
+                 _llcmpu,    \
+                 _scmpzero,  \
+                 _icmpzero,  \
+                 _lcmpzero,  \
+                 _llcmpzero, \
+                 _setflag,   \
+                 _sneg,      \
+                 _ineg,      \
+                 _lneg,      \
+                 _llneg,     \
+                 _ladd,      \
+                 _ladd_b,    \
+                 _lladd,     \
+                 _lsub,      \
+                 _llsub,     \
+                 _bmulu,     \
+                 _smulu,     \
+                 _imulu,     \
+                 _imul_b,    \
+                 _lmulu,     \
+                 _llmulu,    \
+                 _bdivs,     \
+                 _sdivs,     \
+                 _idivs,     \
+                 _ldivs,     \
+                 _lldivs,    \
+                 _bdivu,     \
+                 _sdivu,     \
+                 _idivu,     \
+                 _ldivu,     \
+                 _lldivu,    \
+                 _brems,     \
+                 _srems,     \
+                 _irems,     \
+                 _lrems,     \
+                 _llrems,    \
+                 _bremu,     \
+                 _sremu,     \
+                 _iremu,     \
+                 _lremu,     \
+                 _llremu,    \
+                 _idvrmu,    \
+                 _ldvrmu,    \
+                             \
+                 _bpopcnt,   \
+                 _spopcnt,   \
+                 _ipopcnt,   \
+                 _lpopcnt,   \
+                 _llpopcnt,  \
+                             \
+                 _fadd,      \
+                 _fsub,      \
+                 _fmul,      \
+                 _fdiv,      \
+                 _frem,      \
+                 _fneg,      \
+                 _fcmp,      \
+                 _ftol,      \
+                 _ltof,      \
+                 _ultof,     \
+                             \
+                 _dadd,      \
+                 _dsub,      \
+                 _dmul,      \
+                 _ddiv,      \
+                 _drem,      \
+                 _dneg,      \
+                 _dcmp,      \
+                 _ftod,      \
+                 _dtof,      \
+                 _dtol,      \
+                 _dtoul,     \
+                 _ltod,      \
+                 _ultod,     \
+                 _dtoll,     \
+                 _lltod,     \
+                 _ulltod
+db 9, "def _", `libcall, 10
+db "_", `libcall, ":", 10
+db 9, "halt", 10
+db 9, "db '", `libcall, "', 0", 10, 10
+end iterate

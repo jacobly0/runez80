@@ -1,0 +1,7 @@
+[submodule "fasmg-ez80"]
+	path = external/fasmg-ez80
+	url = https://github.com/jacobly0/fasmg-ez80.git
+        ignore = dirty
+[submodule "CEmu"]
+	path = external/CEmu
+	url = https://github.com/CE-Programming/CEmu.git

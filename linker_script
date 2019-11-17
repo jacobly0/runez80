@@ -1,0 +1,5 @@
+locate init at $D00000
+order init, code, data, strsect, text
+range bss $D40000 : $D50000
+srcs 'csmith.asm' used, 'libcall.asm'
+include 'ld.fasmg'
