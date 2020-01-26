@@ -1,5 +1,7 @@
-db 9, "segment code", 10, 10
+db 9, "section", 9, ".text", 10, 10
 iterate libcall, putchar,    \
+                 memcpy,     \
+                 memset,     \
                              \
                  _frameset0, \
                  _frameset,  \
@@ -122,8 +124,8 @@ iterate libcall, putchar,    \
                  _dtoll,     \
                  _lltod,     \
                  _ulltod
-db 9, "def _", `libcall, 10
+db 9, "public", 9, "_", `libcall, 10
 db "_", `libcall, ":", 10
 db 9, "halt", 10
-db 9, "db '", `libcall, "', 0", 10, 10
+db 9, "db", 9, "'", `libcall, "', 0", 10, 10
 end iterate
