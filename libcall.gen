@@ -3,6 +3,8 @@ iterate libcall, putchar,    \
                  memcpy,     \
                  memset,     \
                              \
+                 _dump,      \
+                             \
                  _frameset0, \
                  _frameset,  \
                              \

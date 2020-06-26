@@ -172,6 +172,13 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
                         std::memset(pdst, src, len);
                         return ret24(dst);
                     }},
+    {"_dump"s,      []{
+                        fprintf(stderr, "AF %04X     %04X AF'\nBC %06X %06X BC'\nDE %06X %06X DE'\n"
+                                "HL %06X %06X HL'\nIX %06X %06X SPS\nIY %06X %06X SPL\n\n",
+                                r.AF, r._AF, r.BC, r._BC, r.DE, r._DE,
+                                r.HL, r._HL, r.IX, r.SPS, r.IY, r.SPL);
+                        return ret();
+                    }},
     {"_frameset0"s, []{
                         ret();
                         memref<u24>(r.SPL -= 3) = r.IX;
@@ -235,12 +242,12 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
     {"_idivu"s,     []{ return ret24(div(u24(r.HL), u24(r.BC))); }},
     {"_ldivu"s,     []{ return ret32(div(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC)))); }},
     {"_lldivu"s,    []{ return ret64(div(memref<u64>(r.HL), memref<u64>(r.BC))); }},
-    {"_brems"s,     []{ return ret8(rem(s8(r.B), s8(r.C))); }},
+    {"_brems"s,     []{ return ret8(rem(s8(r.A), s8(r.C))); }},
     {"_srems"s,     []{ return ret16(rem(s16(r.HL), s16(r.BC))); }},
     {"_irems"s,     []{ return ret24(rem(s24(r.HL), s24(r.BC))); }},
     {"_lrems"s,     []{ return ret32(rem(s32(regs(r.E, r.HL)), s32(regs(r.A, r.BC)))); }},
     {"_llrems"s,    []{ return ret64(rem(memref<s64>(r.HL), memref<s64>(r.BC))); }},
-    {"_bremu"s,     []{ return ret8(rem(u8(r.B), u8(r.C))); }},
+    {"_bremu"s,     []{ return ret8(rem(u8(r.A), u8(r.C))); }},
     {"_sremu"s,     []{ return ret16(rem(u16(r.HL), u16(r.BC))); }},
     {"_iremu"s,     []{ return ret24(rem(u24(r.HL), u24(r.BC))); }},
     {"_lremu"s,     []{ return ret32(rem(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC)))); }},

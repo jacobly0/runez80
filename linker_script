@@ -1,6 +1,6 @@
 locate .init at $D00000
 order .init, .text, .data, .rodata
-range .bss .text.top : $D60000
+range .bss .rodata.top : $D60000
 source 'csmith.asm', 'libcall.asm'
 require __start
 include 'ld.alm'

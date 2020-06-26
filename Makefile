@@ -47,14 +47,16 @@ CEMUCORE = external/CEmu/core/libcemucore.a
 check: rm-test.c check-one
 
 rm-test.c:
+ifneq ($(wildcard test.c),)
 	$(MV) test.c test.prev.c
+endif
 
 check-one: test.c libcall.asm $(RUNEZ80)
-	INCLUDE=external/fasmg-ez80 FASMG="$(FASMG) linker_script" CFLAGS="$(TEST_CFLAGS) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=./$(RUNEZ80) time ./runez80.sh || exit 0
+	INCLUDE=external/fasmg-ez80 FASMG="$(FASMG) linker_script" CFLAGS="$(TEST_CFLAGS) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=./$(RUNEZ80) time ./runez80.sh
 	$(RM) creduce
 	mkdir -p creduce
-	cp test.c creduce
-	cd creduce && INCLUDE=$(CURDIR)\;$(CURDIR)/external/fasmg-ez80 FASMG="$(CURDIR)/$(FASMG) $(CURDIR)/linker_script" CFLAGS="$(TEST_CFLAGS) -iquote $(CURDIR) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=$(CURDIR)/$(RUNEZ80) creduce --timeout $(CREDUCE_TIMEOUT) $(CURDIR)/runez80.sh $<
+	ez80-clang -E $(TEST_CFLAGS) -iquote $(CURDIR) $< -o creduce/$<
+	cd creduce && INCLUDE=$(CURDIR)\;$(CURDIR)/external/fasmg-ez80 FASMG="$(CURDIR)/$(FASMG) $(CURDIR)/linker_script" CFLAGS="$(TEST_CFLAGS) -iquote $(CURDIR) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=$(CURDIR)/$(RUNEZ80) creduce --timeout $(CREDUCE_TIMEOUT) $(CURDIR)/runez80.sh $< || exit 0
 
 test.c:
 	$(CSMITH) $(CSMITH_FLAGS) -o $@
@@ -83,7 +85,9 @@ external/fasmg-ez80/fasmg.zip:
 	$(WGET) https://flatassembler.net/fasmg.zip --output-document=$@
 
 clean:
+ifneq ($(wildcard $(dir $(CEMUCORE))),)
 	$(MAKE) -C $(dir $(CEMUCORE)) clean
+endif
 	$(RM) libcall.asm runz80 native.* test.c ez80.* $(RUNEZ80) $(FASMG)
 
 distclean: clean

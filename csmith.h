@@ -1,6 +1,6 @@
 #include "stdint.h"
 #include "limits.h"
-#include "/usr/include/csmith/safe_math_macros.h"
+#include <csmith-2.3.0/safe_math_macros.h>
 
 extern int putchar (int);
 

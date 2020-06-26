@@ -1,19 +1,21 @@
 #!/bin/sh
 
-for warning in array-bounds implicit-function-declaration implicit-int incompatible-pointer-types int-conversion main-return-type return-type strict-prototypes uninitialized unsequenced; do
+for warning in array-bounds conditional-uninitialized division-by-zero implicit-function-declaration implicit-int incompatible-pointer-types int-conversion main-return-type return-type strict-prototypes uninitialized unsequenced; do
     Werror="$Werror -Werror=$warning"
 done
-for warning in unused-function unused-variable unused-value constant-conversion bool-operation constant-logical-operand empty-body tautological-compare tautological-constant-compare tautological-constant-out-of-range-compare tautological-pointer-compare compare-distinct-pointer-types pointer-sign parentheses-equality; do
+for warning in bool-operation compare-distinct-pointer-types constant-conversion constant-logical-operand empty-body implicit-int-conversion parentheses-equality pointer-sign tautological-compare tautological-constant-compare tautological-constant-out-of-range-compare tautological-pointer-compare unused-function unused-value unused-variable; do
     Wno="$Wno -Wno-$warning"
 done
 #set -x
 
 # native
-$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -fsanitize=memory,bounds -fsanitize-trap=signed-integer-overflow,unreachable,return,bounds,builtin,bool,shift -o native.elf || exit
+$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -glldb -fsanitize=memory,bounds -fsanitize-trap=signed-integer-overflow,unreachable,return,bounds,builtin,bool,shift -o native.elf 2>native.diag || exit
+cat native.diag >&2
+grep "too \(few\|many\) arguments in call to '\|tentative array definition assumed to have one element\|expected ';' at end of declaration list" native.diag && exit 1
 timeout ${NATIVE_TIMEOUT}s ./native.elf >native.out 2>native.err
 ec=$?
 cat native.err >&2
-test -s native.err -o $ec -eq 124 && exit $ec
+test -s native.err -o $ec -eq 124 -o $ec -eq 132 && exit $ec
 echo "exit code: $ec" >> native.out
 
 # ez80
