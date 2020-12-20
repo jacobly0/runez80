@@ -1,8 +1,9 @@
-*~
 #*#
-libcall.asm
-runez80
-fasmg-ez80
-test*
-native*
+*~
+cvise
 ez80*
+fasmg-ez80
+libcall.asm
+native*
+runez80
+test*

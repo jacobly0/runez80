@@ -1,15 +1,3 @@
-FLAGS = -O3 -g0 -flto
-CC = clang
-CFLAGS = -std=c89 -W -Wall -Wextra $(FLAGS)
-CXX = clang++
-CXXFLAGS = -std=c++17 -W -Wall -Wextra $(FLAGS) -iquote external/CEmu/core
-AR = llvm-ar
-
-TEST_CFLAGS = -Oz
-TEST_ITERATIONS = 10
-NATIVE_TIMEOUT = 10
-CREDUCE_TIMEOUT = 30
-
 ifeq ($(OS),Windows_NT)
 	EXE = .exe
 	RM = del /f 2>nul
@@ -33,16 +21,34 @@ else
 	endif
 endif
 
-RUNEZ80 = runez80$(EXE)
+FLAGS = -O3 -g0 -flto -DMULTITHREAD
+CC = clang
+CFLAGS = -std=gnu11 -W -Wall -Wextra $(FLAGS)
+CXX = clang++
+CXXFLAGS = -std=c++17 -W -Wall -Wextra $(FLAGS) -iquote external/CEmu/core
+AR = llvm-ar
+
 FASMG = external/fasmg-ez80/bin/fasmg$(EXE)
+
+TEST_CFLAGS = -Oz
+TEST_ITERATIONS = 10
+NATIVE_TIMEOUT = 10
+RUNEZ80 = runez80$(EXE)
+
+CVISE=cvise
+CVISE_TIMEOUT = 30
+CVISE_FLAGS = --n 8 --timeout $(CVISE_TIMEOUT) --renaming
 
 CSMITH = csmith
 CSMITH_FLAGS = --no-bitfields --no-argc --no-hash-value-printf
+
 GIT = git
 UNZIP = unzip
 WGET = wget
 
 CEMUCORE = external/CEmu/core/libcemucore.a
+
+TEST_CFLAGS_ALL = $(TEST_CFLAGS) -I$(abspath $(lastword $(wildcard $(addprefix $(dir $(realpath $(shell which $(CSMITH))))/../,csmith-* runtime)))) -iquote $(CURDIR)
 
 check: rm-test.c check-one
 
@@ -52,11 +58,11 @@ ifneq ($(wildcard test.c),)
 endif
 
 check-one: test.c libcall.asm $(RUNEZ80)
-	INCLUDE=external/fasmg-ez80 FASMG="$(FASMG) linker_script" CFLAGS="$(TEST_CFLAGS) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=./$(RUNEZ80) time ./runez80.sh
-	$(RM) creduce
-	mkdir -p creduce
-	ez80-clang -E $(TEST_CFLAGS) -iquote $(CURDIR) $< -o creduce/$<
-	cd creduce && INCLUDE=$(CURDIR)\;$(CURDIR)/external/fasmg-ez80 FASMG="$(CURDIR)/$(FASMG) $(CURDIR)/linker_script" CFLAGS="$(TEST_CFLAGS) -iquote $(CURDIR) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=$(CURDIR)/$(RUNEZ80) creduce --timeout $(CREDUCE_TIMEOUT) $(CURDIR)/runez80.sh $< || exit 0
+	INCLUDE=external/fasmg-ez80 FASMG="$(FASMG) linker_script" CFLAGS="$(TEST_CFLAGS_ALL) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=./$(RUNEZ80) time ./runez80.sh
+	$(RM) cvise
+	mkdir -p cvise
+	ez80-clang -E $(TEST_CFLAGS_ALL) $< -o cvise/$<
+	cd cvise && INCLUDE=$(CURDIR)\;$(CURDIR)/external/fasmg-ez80 FASMG="$(CURDIR)/$(FASMG) $(CURDIR)/linker_script" CFLAGS="$(TEST_CFLAGS_ALL) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=$(CURDIR)/$(RUNEZ80) $(CVISE) $(CVISE_FLAGS) $(CURDIR)/runez80.sh $< || exit 0
 
 test.c:
 	$(CSMITH) $(CSMITH_FLAGS) -o $@
