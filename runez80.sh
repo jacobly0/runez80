@@ -20,10 +20,10 @@ test -s native.err -o $ec -eq 124 -o $ec -eq 132 && exit $ec
 echo "exit code: $ec" >> native.out
 
 # ez80
-timeout 200s ez80-clang $Wno -S $CFLAGS -o ez80.asm || exit 0
+timeout 250s ez80-clang $Wno -S $CFLAGS -o ez80.asm || exit 0
 timeout 50s $FASMG -i 'source "ez80.asm"' ez80.bin 2> ez80.err
 ec=$?
-grep '^Error: could not generate code within the allowed number of passes.$\|^Custom error: section .* ends [0-9]\+ bytes before it begins.$' ez80.err && exit $ec
+grep '^Error: could not generate code within the allowed number of passes.$\|^Custom error: section [^ ]\+ has a maximum end that is [0-9]\+ bytes before it begins.$' ez80.err && exit $ec
 cat ez80.err >&2
 test $ec -eq 0 || exit 0
 $RUNEZ80 ez80.bin > ez80.out
