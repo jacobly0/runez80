@@ -57,7 +57,7 @@ class RegisterTuple {
     Value get() {
         Value result = std::get<Index>(regs);
         if constexpr (bool(Index))
-            result |= get<Value, Index - 1>() << 24;
+            result |= get<Value, Index - 1>() << Value{24};
         return result;
     }
 public:
@@ -66,7 +66,7 @@ public:
     RegisterTuple &operator=(Value value) {
         std::get<Index>(regs) = u24(value);
         if constexpr (bool(Index))
-            return operator=<Value, Index - 1>(value >> Value(24));
+            return operator=<Value, Index - 1>(value >> Value{24});
         else
             return *this;
     }
@@ -92,19 +92,20 @@ bool ret() {
     cpu.halted = false;
     return true;
 }
-bool ret8(u8 result) {
+template<typename Result> bool ret(Result result) = delete;
+template<> bool ret<u8>(u8 result) {
     regs(r.A) = result;
     return ret();
 }
-bool ret16(u16 result) {
+template<> bool ret<u16>(u16 result) {
     regs(r.HL) = result;
     return ret();
 }
-bool ret24(u24 result) {
+template<> bool ret<u24>(u24 result) {
     regs(r.HL) = result;
     return ret();
 }
-bool ret32(u32 result) {
+template<> bool ret<u32>(u32 result) {
     regs(r.E, r.HL) = result;
     return ret();
 }
@@ -112,8 +113,8 @@ bool retL(u32 result) {
     regs(r.A, r.BC) = result;
     return ret();
 }
-bool ret64(u64 result) {
-    regs(r.BC, r.DE, r.HL) = result;
+template<> bool ret<u64>(u64 result) {
+    regs(r.BCS, r.DE, r.HL) = result;
     return ret();
 }
 template<typename Value>
@@ -144,7 +145,7 @@ Value rem(Value x, Value y) {
 
 const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
     {"exit"s,       []{ return false; }},
-    {"putchar"s,    []{ return ret32(putchar(memref<char>(r.SPL + 3))); }},
+    {"putchar"s,    []{ return ret(u24(putchar(memref<char>(r.SPL + 3)))); }},
     {"memcpy"s,     []{
                         u24 dst = memref<u24>(r.SPL + 3);
                         u24 src = memref<u24>(r.SPL + 6);
@@ -157,7 +158,7 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
                             return false;
                         }
                         std::memcpy(pdst, psrc, len);
-                        return ret24(dst);
+                        return ret(dst);
                     }},
     {"memset"s,     []{
                         u24 dst = memref<u24>(r.SPL + 3);
@@ -170,7 +171,7 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
                             return false;
                         }
                         std::memset(pdst, src, len);
-                        return ret24(dst);
+                        return ret(dst);
                     }},
     {"_dump"s,      []{
                         fprintf(stderr, "AF %04X     %04X AF'\nBC %06X %06X BC'\nDE %06X %06X DE'\n"
@@ -192,66 +193,74 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
                         r.SPL += s24(r.HL);
                         return true;
                     }},
-    {"_sand"s,      []{ return ret16(r.HL & r.BC); }},
-    {"_iand"s,      []{ return ret24(r.HL & r.BC); }},
-    {"_land"s,      []{ return ret32(u32(regs(r.E, r.HL)) & u32(regs(r.A, r.BC))); }},
-    {"_lland"s,     []{ return ret64(memref<u64>(r.HL) & memref<u64>(r.BC)); }},
-    {"_sor"s,       []{ return ret16(r.HL | r.BC); }},
-    {"_ior"s,       []{ return ret24(r.HL | r.BC); }},
-    {"_lor"s,       []{ return ret32(u32(regs(r.E, r.HL)) | u32(regs(r.A, r.BC))); }},
-    {"_llor"s,      []{ return ret64(memref<u64>(r.HL) | memref<u64>(r.BC)); }},
-    {"_sxor"s,      []{ return ret16(r.HL ^ r.BC); }},
-    {"_ixor"s,      []{ return ret24(r.HL ^ r.BC); }},
-    {"_lxor"s,      []{ return ret32(u32(regs(r.E, r.HL)) ^ u32(regs(r.A, r.BC))); }},
-    {"_llxor"s,     []{ return ret64(memref<u64>(r.HL) ^ memref<u64>(r.BC)); }},
-    {"_bshl"s,      []{ return ret8(r.A << r.B); }},
-    {"_sshl"s,      []{ return ret16(r.HL << r.C); }},
-    {"_ishl"s,      []{ return ret24(r.HL << r.C); }},
+    {"_snot"s,      []{ return ret(u16(~r.HLS)); }},
+    {"_inot"s,      []{ return ret(u24(~r.HL)); }},
+    {"_lnot"s,      []{ return ret(u32(~u32(regs(r.E, r.HL)))); }},
+    {"_llnot"s,     []{ return ret(u64(~u64(regs(r.BCS, r.DE, r.HL)))); }},
+    {"_sand"s,      []{ return ret(u16(r.HL & r.BC)); }},
+    {"_iand"s,      []{ return ret(u24(r.HL & r.BC)); }},
+    {"_land"s,      []{ return ret(u32(regs(r.E, r.HL)) & u32(regs(r.A, r.BC))); }},
+    {"_lland"s,     []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) & memref<u64>(r.SPL + 3)); }},
+    {"_sor"s,       []{ return ret(u16(r.HL | r.BC)); }},
+    {"_ior"s,       []{ return ret(u24(r.HL | r.BC)); }},
+    {"_lor"s,       []{ return ret(u32(regs(r.E, r.HL)) | u32(regs(r.A, r.BC))); }},
+    {"_llor"s,      []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) | memref<u64>(r.SPL + 3)); }},
+    {"_sxor"s,      []{ return ret(u16(r.HL ^ r.BC)); }},
+    {"_ixor"s,      []{ return ret(u24(r.HL ^ r.BC)); }},
+    {"_lxor"s,      []{ return ret(u32(regs(r.E, r.HL)) ^ u32(regs(r.A, r.BC))); }},
+    {"_llxor"s,     []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) ^ memref<u64>(r.SPL + 3)); }},
+    {"_bshl"s,      []{ return ret(u8(r.A << r.B)); }},
+    {"_sshl"s,      []{ return ret(u16(r.HL << r.C)); }},
+    {"_ishl"s,      []{ return ret(u24(r.HL << r.C)); }},
     {"_lshl"s,      []{ return retL(u32(regs(r.A, r.BC)) << r.L); }},
-    {"_llshl"s,     []{ return ret64(memref<u64>(r.HL) << r.C); }},
-    {"_bshrs"s,     []{ return ret8(s8(r.A) >> r.B); }},
-    {"_sshrs"s,     []{ return ret16(s16(r.HL) >> r.C); }},
-    {"_ishrs"s,     []{ return ret24(s24(r.HL) >> r.C); }},
+    {"_llshl"s,     []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) << memref<u8>(r.SPL + 3)); }},
+    {"_bshrs"s,     []{ return ret(u8(s8(r.A) >> r.B)); }},
+    {"_sshrs"s,     []{ return ret(u16(s16(r.HLS) >> r.C)); }},
+    {"_ishrs"s,     []{ return ret(u24(s24(r.HL) >> r.C)); }},
     {"_lshrs"s,     []{ return retL(s32(regs(r.A, r.BC)) >> r.L); }},
-    {"_llshrs"s,    []{ return ret64(memref<s64>(r.HL) >> r.C); }},
-    {"_bshru"s,     []{ return ret8(u8(r.A) >> r.B); }},
-    {"_sshru"s,     []{ return ret16(u16(r.HL) >> r.C); }},
-    {"_ishru"s,     []{ return ret24(u24(r.HL) >> r.C); }},
+    {"_llshrs"s,    []{ return ret(u64(s64(regs(r.BCS, r.DE, r.HL)) >> memref<u8>(r.SPL + 3))); }},
+    {"_bshru"s,     []{ return ret(u8(r.A >> r.B)); }},
+    {"_sshru"s,     []{ return ret(u16(r.HLS >> r.C)); }},
+    {"_ishru"s,     []{ return ret(u24(r.HL >> r.C)); }},
     {"_lshru"s,     []{ return retL(u32(regs(r.A, r.BC)) >> r.L); }},
-    {"_llshru"s,    []{ return ret64(memref<u64>(r.HL) >> r.C); }},
+    {"_llshru"s,    []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) >> memref<u8>(r.SPL + 3)); }},
     {"_lcmpu"s,     []{ return cmp(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC))); }},
-    {"_llcmpu"s,    []{ return cmp(memref<u64>(r.HL), memref<u64>(r.BC)); }},
+    {"_llcmpu"s,    []{ return cmp(u64(regs(r.BCS, r.DE, r.HL)), memref<u64>(r.SPL + 3)); }},
     {"_lcmpzero"s,  []{ return cmp(u32(regs(r.E, r.HL))); }},
-    {"_llcmpzero"s, []{ return cmp(memref<u64>(r.HL)); }},
-    {"_setflag"s,   []{ if (r.F & 1 << 2) r.F ^= 1 << 7; return ret(); }},
-    {"_ladd"s,      []{ return ret32(u32(regs(r.E, r.HL)) + u32(regs(r.A, r.BC))); }},
-    {"_lladd"s,     []{ return ret64(memref<u64>(r.HL) + memref<u64>(r.BC)); }},
-    {"_lsub"s,      []{ return ret32(u32(regs(r.E, r.HL)) - u32(regs(r.A, r.BC))); }},
-    {"_llsub"s,     []{ return ret64(memref<u64>(r.HL) - memref<u64>(r.BC)); }},
-    {"_smulu"s,     []{ return ret16(u16(r.HL) * u16(r.BC)); }},
-    {"_imulu"s,     []{ return ret24(u24(r.HL) * u24(r.BC)); }},
-    {"_lmulu"s,     []{ return ret24(u32(regs(r.E, r.HL)) * u32(regs(r.A, r.BC))); }},
-    {"_llmulu"s,    []{ return ret64(memref<u64>(r.HL) * memref<u64>(r.BC)); }},
-    {"_bdivs"s,     []{ return ret8(div(s8(r.B), s8(r.C))); }},
-    {"_sdivs"s,     []{ return ret16(div(s16(r.HL), s16(r.BC))); }},
-    {"_idivs"s,     []{ return ret24(div(s24(r.HL), s24(r.BC))); }},
-    {"_ldivs"s,     []{ return ret32(div(s32(regs(r.E, r.HL)), s32(regs(r.A, r.BC)))); }},
-    {"_lldivs"s,    []{ return ret64(div(memref<s64>(r.HL), memref<s64>(r.BC))); }},
-    {"_bdivu"s,     []{ return ret8(div(u8(r.B), u8(r.C))); }},
-    {"_sdivu"s,     []{ return ret16(div(u16(r.HL), u16(r.BC))); }},
-    {"_idivu"s,     []{ return ret24(div(u24(r.HL), u24(r.BC))); }},
-    {"_ldivu"s,     []{ return ret32(div(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC)))); }},
-    {"_lldivu"s,    []{ return ret64(div(memref<u64>(r.HL), memref<u64>(r.BC))); }},
-    {"_brems"s,     []{ return ret8(rem(s8(r.A), s8(r.C))); }},
-    {"_srems"s,     []{ return ret16(rem(s16(r.HL), s16(r.BC))); }},
-    {"_irems"s,     []{ return ret24(rem(s24(r.HL), s24(r.BC))); }},
-    {"_lrems"s,     []{ return ret32(rem(s32(regs(r.E, r.HL)), s32(regs(r.A, r.BC)))); }},
-    {"_llrems"s,    []{ return ret64(rem(memref<s64>(r.HL), memref<s64>(r.BC))); }},
-    {"_bremu"s,     []{ return ret8(rem(u8(r.A), u8(r.C))); }},
-    {"_sremu"s,     []{ return ret16(rem(u16(r.HL), u16(r.BC))); }},
-    {"_iremu"s,     []{ return ret24(rem(u24(r.HL), u24(r.BC))); }},
-    {"_lremu"s,     []{ return ret32(rem(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC)))); }},
-    {"_llremu"s,    []{ return ret64(rem(memref<u64>(r.HL), memref<u64>(r.BC))); }},
+    {"_llcmpzero"s, []{ return cmp(u64(regs(r.BCS, r.DE, r.HL))); }},
+    {"_setflag"s,   []{ r.F ^= r.F << 5 & 1 << 7; return ret(); }},
+    {"_sneg"s,      []{ return ret(u16(-r.HLS)); }},
+    {"_ineg"s,      []{ return ret(u24(-r.HL)); }},
+    {"_lneg"s,      []{ return ret(u32(-u32(regs(r.E, r.HL)))); }},
+    {"_llneg"s,     []{ return ret(u64(-u64(regs(r.BCS, r.DE, r.HL)))); }},
+    {"_ladd"s,      []{ return ret(u32(regs(r.E, r.HL)) + u32(regs(r.A, r.BC))); }},
+    {"_lladd"s,     []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) + memref<u64>(r.SPL + 3)); }},
+    {"_lsub"s,      []{ return ret(u32(regs(r.E, r.HL)) - u32(regs(r.A, r.BC))); }},
+    {"_llsub"s,     []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) - memref<u64>(r.SPL + 3)); }},
+    {"_smulu"s,     []{ return ret(u16(r.HLS * r.BCS)); }},
+    {"_imulu"s,     []{ return ret(u24(r.HL * r.BC)); }},
+    {"_lmulu"s,     []{ return ret(u32(regs(r.E, r.HL)) * u32(regs(r.A, r.BC))); }},
+    {"_llmulu"s,    []{ return ret(u64(regs(r.BCS, r.DE, r.HL)) * memref<u64>(r.SPL + 3)); }},
+    {"_bdivs"s,     []{ return ret(u8(div(s8(r.B), s8(r.C)))); }},
+    {"_sdivs"s,     []{ return ret(u16(div(s16(r.HLS), s16(r.BCS)))); }},
+    {"_idivs"s,     []{ return ret(u24(div(s24(r.HL), s24(r.BC)))); }},
+    {"_ldivs"s,     []{ return ret(u32(div(s32(regs(r.E, r.HL)), s32(regs(r.A, r.BC))))); }},
+    {"_lldivs"s,    []{ return ret(u64(div(s64(regs(r.BCS, r.DE, r.HL)), memref<s64>(r.SPL + 3)))); }},
+    {"_bdivu"s,     []{ return ret(u8(div(r.B, r.C))); }},
+    {"_sdivu"s,     []{ return ret(u64(div(r.HLS, r.BCS))); }},
+    {"_idivu"s,     []{ return ret(u24(div(r.HL, r.BC))); }},
+    {"_ldivu"s,     []{ return ret(u32(div(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC))))); }},
+    {"_lldivu"s,    []{ return ret(u32(div(u64(regs(r.BCS, r.DE, r.HL)), memref<u64>(r.SPL + 3)))); }},
+    {"_brems"s,     []{ return ret(u8(rem(s8(r.A), s8(r.C)))); }},
+    {"_srems"s,     []{ return ret(u16(rem(s16(r.HL), s16(r.BC)))); }},
+    {"_irems"s,     []{ return ret(u24(rem(s24(r.HL), s24(r.BC)))); }},
+    {"_lrems"s,     []{ return ret(u32(rem(s32(regs(r.E, r.HL)), s32(regs(r.A, r.BC))))); }},
+    {"_llrems"s,    []{ return ret(u64(rem(s64(regs(r.BCS, r.DE, r.HL)), memref<s64>(r.SPL + 3)))); }},
+    {"_bremu"s,     []{ return ret(u8(rem(r.A, r.C))); }},
+    {"_sremu"s,     []{ return ret(u16(rem(r.HLS, r.BCS))); }},
+    {"_iremu"s,     []{ return ret(u24(rem(u24(r.HL), u24(r.BC)))); }},
+    {"_lremu"s,     []{ return ret(u32(rem(u32(regs(r.E, r.HL)), u32(regs(r.A, r.BC))))); }},
+    {"_llremu"s,    []{ return ret(u64(rem(u64(regs(r.BCS, r.DE, r.HL)), memref<u64>(r.SPL + 3)))); }},
 };
 
 bool emulate_libcall(void) {

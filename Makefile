@@ -22,10 +22,12 @@ else
 endif
 
 FLAGS = -O3 -g0 -flto -DMULTITHREAD
+FLAGSD = -O0 -g3 -flto -DMULTITHREAD
 CC = clang
 CFLAGS = -std=gnu11 -W -Wall -Wextra $(FLAGS)
 CXX = clang++
 CXXFLAGS = -std=c++17 -W -Wall -Wextra $(FLAGS) -iquote external/CEmu/core
+CXXFLAGSD = -std=c++17 -W -Wall -Wextra $(FLAGSD) -iquote external/CEmu/core
 AR = llvm-ar
 
 FASMG = external/fasmg-ez80/bin/fasmg$(EXE)
@@ -34,6 +36,7 @@ TEST_CFLAGS = -Oz
 TEST_ITERATIONS = 10
 NATIVE_TIMEOUT = 10
 RUNEZ80 = runez80$(EXE)
+RUNEZ80D = runez80d$(EXE)
 
 CVISE=cvise
 CVISE_TIMEOUT = 30
@@ -50,14 +53,14 @@ CEMUCORE = external/CEmu/core/libcemucore.a
 
 TEST_CFLAGS_ALL = $(TEST_CFLAGS) -I$(abspath $(lastword $(wildcard $(addprefix $(dir $(realpath $(shell which $(CSMITH))))/../,csmith-* runtime)))) -iquote $(CURDIR)
 
-check: rm-test.c check-one
+check: rm-test.c recheck
 
 rm-test.c:
 ifneq ($(wildcard test.c),)
 	$(MV) test.c test.prev.c
 endif
 
-check-one: test.c libcall.asm $(RUNEZ80)
+recheck: test.c libcall.asm $(RUNEZ80) $(RUNEZ80D)
 	INCLUDE=external/fasmg-ez80 FASMG="$(FASMG) linker_script" CFLAGS="$(TEST_CFLAGS_ALL) $<" NATIVE_TIMEOUT=$(NATIVE_TIMEOUT) RUNEZ80=./$(RUNEZ80) time ./runez80.sh
 	$(RM) cvise
 	mkdir -p cvise
@@ -70,6 +73,9 @@ test.c:
 
 $(RUNEZ80): runez80.cpp $(CEMUCORE)
 	$(CXX) $(CXXFLAGS) $^ -o $@
+
+$(RUNEZ80D): runez80.cpp $(CEMUCORE)
+	$(CXX) $(CXXFLAGSD) $^ -o $@
 
 libcall.asm: $(FASMG) libcall.gen
 	$^ $@
@@ -101,4 +107,4 @@ distclean: clean
 	$(GIT) submodule deinit --all --force
 
 .INTERMEDIATE: $(addpreifx external/fasmg-ez80/, fasmg fasmg.zip)
-.PHONY: check check-one clean distclean
+.PHONY: check recheck clean distclean

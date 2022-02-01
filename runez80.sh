@@ -9,10 +9,12 @@ done
 set "$1"
 
 # native
-$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -glldb -o native.elf 2> native.diag || exit
-$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -glldb -fsanitize=memory,bounds -fsanitize-trap=signed-integer-overflow,unreachable,return,bounds,builtin,bool,shift -o native.elf 2>> native.diag || exit
+echo compiling native executable...
+#$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -glldb -o native.elf 2> native.diag || exit
+$(readlink -f $(which ez80-clang)) -Xclang -test-ez80-hack $Werror $Wno $CFLAGS -O0 -glldb -fsanitize=memory,bounds -fsanitize-trap=signed-integer-overflow,unreachable,return,bounds,builtin,bool,shift -o native.elf 2> native.diag || exit
 cat native.diag >&2
 grep "too \(few\|many\) arguments in call to '\|tentative array definition assumed to have one element\|expected ';' at end of declaration list" native.diag && exit 1
+echo executing native executable...
 timeout ${NATIVE_TIMEOUT}s ./native.elf > native.out 2> native.err
 ec=$?
 cat native.err >&2
@@ -20,12 +22,15 @@ test -s native.err -o $ec -eq 124 -o $ec -eq 132 && exit $ec
 echo "exit code: $ec" >> native.out
 
 # ez80
+echo compiling ez80 executable...
 timeout 250s ez80-clang $Wno -S $CFLAGS -o ez80.asm || exit 0
+echo assembling ez80 executable...
 timeout 50s $FASMG -i 'source "ez80.asm"' ez80.bin 2> ez80.err
 ec=$?
 grep '^Error: could not generate code within the allowed number of passes.$\|^Custom error: section [^ ]\+ has a maximum end that is [0-9]\+ bytes before it begins.$' ez80.err && exit $ec
 cat ez80.err >&2
 test $ec -eq 0 || exit 0
+echo running ez80 executable...
 $RUNEZ80 ez80.bin > ez80.out
 ec=$?
 test $ec -eq 124 && exit $ec
