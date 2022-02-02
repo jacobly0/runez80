@@ -2,7 +2,13 @@
 #include "limits.h"
 #include <safe_math_macros.h>
 
+typedef __SIZE_TYPE__ size_t;
+
 extern int putchar (int);
+
+extern void *memcpy (void *restrict, const void *restrict, size_t);
+extern void *memset (void *, int, size_t);
+extern int strcmp (const char *, const char *);
 
 static inline void platform_main_begin(void)
 {
@@ -32,7 +38,8 @@ crc32_gentab (void)
 }
 
 static void 
-crc32_byte (uint8_t b) {
+crc32_byte (uint8_t b)
+{
 	crc32_context = 
 		((crc32_context >> 8) & 0x00FFFFFF) ^ 
 		crc32_tab[(crc32_context ^ b) & 0xFF];
@@ -57,39 +64,22 @@ transparent_crc (uint64_t val, char* vname, int flag)
 	crc32_8bytes(val);
 }
 
-static inline
-int strcmp (const char *s1, const char *s2)
-{
-  for(; *s1 == *s2; ++s1, ++s2)
-    if(*s1 == 0)
-      return 0;
-  return *(unsigned char *)s1 < *(unsigned char *)s2 ? -1 : 1;
-}
-
 static inline void
-my_puts (const char *p)
+puthex (int x)
 {
-  int i = 0;
-  while (p[i]) {
-    putchar (p[i]);
-    i++;
-  }
-}
-
-static inline void
-my_puthex (int x)
-{
-    putchar("0123456789abcdef"[x]);
+    putchar ("0123456789abcdef"[x]);
 }
 
 static inline void
 platform_main_end (uint32_t x, int flag)
 {
   if (!flag) {
+    const char *s;
     int i;
-    my_puts ("checksum = ");
+    for (s = "checksum = "; *s; ++s)
+      putchar (*s);
     for (i=0; i<8; i++) {
-      my_puthex (x & 0xf);
+      puthex (x & 0xf);
       x >>= 4;
     }
     putchar ('\n');

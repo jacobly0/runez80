@@ -35,6 +35,10 @@ struct u24 final {
     operator u32() const {
         return u8(bytes[0]) << 0 | u8(bytes[1]) << 8 | u8(bytes[2]) << 16;
     }
+    u24 operator++() { return *this = *this + 1; }
+    u24 operator++(int) { u24 res = *this; ++*this; return res; }
+    u24 operator--() { return *this = *this - 1; }
+    u24 operator--(int) { u24 res = *this; --*this; return res; }
 private:
     byte bytes[3];
 };
@@ -146,6 +150,21 @@ Value rem(Value x, Value y) {
 const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
     {"exit"s,       []{ return false; }},
     {"putchar"s,    []{ return ret(u24(putchar(memref<char>(r.SPL + 3)))); }},
+    {"puts"s,       []{
+                        u24 s = memref<u24>(r.SPL + 3);
+                        u8 *ps;
+                        do {
+                            ps = static_cast<u8 *>(phys_mem_ptr(s++, 1));
+                            if (!ps) {
+                                fprintf(stderr, "Couldn't perfom puts\n");
+                                r.HL = -1;
+                                return false;
+                            }
+                            putchar(*ps);
+                        } while (*ps);
+                        putchar('\n');
+                        return ret(u24{});
+                    }},
     {"memcpy"s,     []{
                         u24 dst = memref<u24>(r.SPL + 3);
                         u24 src = memref<u24>(r.SPL + 6);
@@ -172,6 +191,21 @@ const std::unordered_map<std::string, bool (*)()> libcall_handlers = {
                         }
                         std::memset(pdst, src, len);
                         return ret(dst);
+                    }},
+    {"strcmp"s,     []{
+                        u24 lhs = memref<u24>(r.SPL + 3);
+                        u24 rhs = memref<u24>(r.SPL + 6);
+                        u8 *plhs, *prhs;
+                        do {
+                            plhs = static_cast<u8 *>(phys_mem_ptr(lhs++, 1));
+                            prhs = static_cast<u8 *>(phys_mem_ptr(rhs++, 1));
+                            if (!plhs || !prhs) {
+                                fprintf(stderr, "Couldn't perform strcmp\n");
+                                r.HL = -1;
+                                return false;
+                            }
+                        } while (*plhs && *plhs == *prhs);
+                        return ret(u24(*plhs < *prhs ? -1 : *plhs > *prhs ? 1 : 0));
                     }},
     {"_dump"s,      []{
                         fprintf(stderr, "AF %04X     %04X AF'\nBC %06X %06X BC'\nDE %06X %06X DE'\n"

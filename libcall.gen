@@ -1,7 +1,10 @@
 db 9, "section", 9, ".text", 10, 10
 iterate libcall, putchar,    \
+                 puts,       \
+                             \
                  memcpy,     \
                  memset,     \
+                 strcmp,     \
                              \
                  _dump,      \
                              \
